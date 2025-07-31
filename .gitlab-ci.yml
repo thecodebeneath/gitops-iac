@@ -18,7 +18,7 @@ default:
     name: hashicorp/terraform:latest
     entrypoint: [""]
   tags:
-    - labs
+    - tf
   # id_tokens: # Request an OIDC token
   #   GITLAB_OIDC_TOKEN:
   #     aud: # Optional: specify audience if required by your IdP config in AWS
