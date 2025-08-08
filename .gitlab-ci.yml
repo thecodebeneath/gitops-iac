@@ -13,7 +13,7 @@ variables:
 
 default:
   image: 
-    name: $ACCOUNT_ID.dkr.ecr.us-east-2.amazonaws.com/codebeneath/terraform-awscli:1.0
+    name: $ACCOUNT_ID.dkr.ecr.us-east-2.amazonaws.com/codebeneath/hashicorp/terraform-awscli:1.0
     entrypoint: [""]
   tags:
     - tf
