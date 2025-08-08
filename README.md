@@ -53,21 +53,28 @@ terraform plan -var-file=codebeneath.tfvars
 ```
 
 ### Second iteration creds
-Second iteration uses OIDC for AWS assumed roles for Terraform AWS provider creds.
+Second iteration uses OIDC for AWS assumed roles for Terraform AWS provider creds. It also uses the Amazon ECR Credential Helper to faciliate Docker login for the assummed role.
 
 ```
 variables:
-  AWS_ROLE_ARN: "arn:aws:iam::MY_ACCOUNT_ID:role/GitlabIacRole"
-  AWS_WEB_IDENTITY_TOKEN_FILE: "${CI_PROJECT_DIR}/aws_oidc_token.json" # Standard practice
-  AWS_ROLE_SESSION_NAME: "GitlabIac-${CI_JOB_ID}"
+  AWS_ROLE_ARN: "arn:aws:iam::ACCNT:role/codebeneath-lab-gitlab-runner-role"
 
 default:
   id_tokens: # Request an OIDC token
     GITLAB_OIDC_TOKEN:
-      aud: # Optional: specify audience if required by your IdP config in AWS
-        - https://git.codebeneath.org
+      aud: https://gitlab.codebeneath-labs.org
   before_script:
-    - echo "${GITLAB_OIDC_TOKEN}" > ${AWS_WEB_IDENTITY_TOKEN_FILE}
-    # Terraform AWS provider will automatically pick up AWS_ROLE_ARN and AWS_WEB_IDENTITY_TOKEN_FILE
+    - >
+      aws_sts_output=$(aws sts assume-role-with-web-identity
+      --role-arn ${AWS_ROLE_ARN}
+      --role-session-name "GitLabRunner-${CI_PROJECT_ID}-${CI_PIPELINE_ID}"
+      --web-identity-token ${GITLAB_OIDC_TOKEN}
+      --duration-seconds 3600
+      --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]'
+      --output text)
+    - export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" $aws_sts_output)
+    - aws sts get-caller-identity
+    - cd ${TF_ROOT}
+    - terraform --version
 ```
 

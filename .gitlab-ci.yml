@@ -5,9 +5,7 @@ stages:
   - cleanup
 
 variables:
-  # AWS_ROLE_ARN: "arn:aws:iam::MY_ACCOUNT_ID:role/GitlabIacRole"
-  # AWS_WEB_IDENTITY_TOKEN_FILE: "${CI_PROJECT_DIR}/aws_oidc_token.json"
-  # AWS_ROLE_SESSION_NAME: "GitlabIac-${CI_JOB_ID}"
+  AWS_ROLE_ARN: "arn:aws:iam::$ACCOUNT_ID:role/codebeneath-lab-gitlab-runner-role"
   TF_ROOT: ${CI_PROJECT_DIR}/terraform
   DESTROY_INFRA:
     description: "Optional action to destroy managed resources"
@@ -15,17 +13,25 @@ variables:
 
 default:
   image: 
-    name: hashicorp/terraform:latest
+    name: $ACCOUNT_ID.dkr.ecr.us-east-2.amazonaws.com/codebeneath/terraform-awscli:1.0
     entrypoint: [""]
   tags:
     - tf
-  # id_tokens: # Request an OIDC token
-  #   GITLAB_OIDC_TOKEN:
-  #     aud: # Optional: specify audience if required by your IdP config in AWS
-  #       - https://git.codebeneath.org
+  id_tokens: # Request an OIDC token
+    GITLAB_OIDC_TOKEN:
+      aud: https://gitlab.codebeneath-labs.org
   before_script:
+    - >
+      aws_sts_output=$(aws sts assume-role-with-web-identity
+      --role-arn ${AWS_ROLE_ARN}
+      --role-session-name "GitLabRunner-${CI_PROJECT_ID}-${CI_PIPELINE_ID}"
+      --web-identity-token ${GITLAB_OIDC_TOKEN}
+      --duration-seconds 3600
+      --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]'
+      --output text)
+    - export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" $aws_sts_output)
+    - aws sts get-caller-identity
     - cd ${TF_ROOT}
-    - echo "${GITLAB_OIDC_TOKEN}" > ${AWS_WEB_IDENTITY_TOKEN_FILE}
     - terraform --version
     - terraform init -input=false
 
@@ -58,8 +64,8 @@ apply:
 
 destroy:
   stage: cleanup
-  needs:
-    - job: validate
+  dependencies:
+    - plan
   script:
     - terraform destroy -input=false -auto-approve
   rules:
