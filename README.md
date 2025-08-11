@@ -55,9 +55,15 @@ terraform plan -var-file=codebeneath.tfvars
 ### Second iteration creds
 Second iteration uses OIDC for AWS assumed roles for Terraform AWS provider creds. It also uses the Amazon ECR Credential Helper to faciliate Docker login for the assummed role.
 
+Gitlab project CI vars
+```
+ACCOUNT_ID: <ACCOUNT-ID>
+AWS_DEFAULT_REGION: us-east-2
+```
+
 ```
 variables:
-  AWS_ROLE_ARN: "arn:aws:iam::ACCNT:role/codebeneath-lab-gitlab-runner-role"
+  AWS_ROLE_ARN: "arn:aws:iam::$ACCOUNT:role/codebeneath-lab-gitlab-runner-role"
 
 default:
   id_tokens: # Request an OIDC token
